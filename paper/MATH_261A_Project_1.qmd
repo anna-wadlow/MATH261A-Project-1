@@ -1,0 +1,166 @@
+---
+title: "Age at Intake and Length of Stay Among Adopted Dogs at San Jose Animal Shelter (2018–2025)"
+subtitle: "Not Just About Age: Rethinking Adoption Timelines"
+author: "Anna Wadlow"
+thanks: "Project repository available at: [https://github.com/anna-wadlow/MATH261A-Project-1](https://github.com/anna-wadlow/MATH261A-Project-1)."
+date: today
+date-format: long
+abstract: "San Jose Animal Care and Services (ACS) has faced sustained overpopulation, making it important to understand drivers of animals’ length of stay (LOS). Using ACS open data (July 2018–present), we examined whether a dog’s age at intake predicts LOS among dogs whose outcome was adoption (n = 8,846). We fit a simple linear regression of LOS (days) on age (years). The estimated slope is small (≈0.85 days per additional year; intercept ≈18.38 days), indicating only a weak, positive association. Model diagnostics show violations of linear model assumptions and a clear shift in residual patterns beginning around 2022. These patterns suggest unmodeled factors, such as intake condition, behavior, breed/size, or time‑varying shelter operations, play a larger role than age alone. We conclude that age at intake, by itself, is a poor predictor of LOS at ACS and recommend incorporating additional variable into the model to better inform operational decision‑making and welfare outcomes."
+format: pdf
+bibliography: references.bib
+number-sections: true
+---
+
+```{r}
+#| include: false
+#| warning: false
+#| message: false
+# load libraries
+library(tidyverse)
+library(lubridate)
+library(janitor)
+library(scales)
+library(stringr)
+library(ggthemes)
+library(ggpubr)
+library(patchwork)
+source('../analysis/Shelter_Analysis.R')
+```
+
+# Introduction
+
+San Jose Animal Care and Services (ACS) is a full-service shelter that has served San Jose and surrounding cities since 2004. In recent years, ACS has frequently operated over capacity, triggering an official city audit in the fall of 2024 [@Audit]. Shelter population directly affects animal welfare and operational efficiency. Longer lengths of stay (LOS) increase the risk of disease — especially contagious respiratory infections — and constrain staff resources, which can in turn lower adoption rates and contribute to the overpopulation [@respiratory_illness]. At the extreme, prolonged LOS can intersect with population management tools, such as euthanasia.
+
+What this paper aims to understand is if a dog’s age at intake is associated with its LOS, among dogs ultimately adopted from ACS.
+
+Prior work in shelter contexts generally treats age as one of several potential correlates of LOS, alongside factors such as intake type/condition, breed/size, color/appearance, behavior notes, and risk of euthanasia [@adoption_factors]. However, the effects of age can vary by facility and period, motivating an ACS-specific analysis that uses the shelter’s own records to quantify the association.
+
+We use the City of San Jose’s open ACS data (updated daily) and restrict the analysis to dogs whose outcome was adoption between July 2018 and the present. A simple linear regression is used to relate LOS to age. We found a modest, positive estimated slope of about 0.85 additional days of LOS per year of age increase. But, diagnostic plots indicate the linear model performs poorly (heteroskedasticity, non-normal residuals, and time-related shifts) suggesting the need for a more robust model. 
+
+@sec-data describes the ACS data and key variables used. @sec-methods outlines the linear modeling approach and @sec-results presents estimates and diagnostics. @sec-discussion interprets findings, reviews limitations, and proposes methodological and operational next steps.
+
+
+# Data {#sec-data}
+
+Data for this paper was obtained from the City of San Jose Open Data Portal. ACS provides intake and outcome records for animals housed at their facility with daily updates covering July 1, 2018 through present. This paper focuses on dogs with an adoption outcome, yielding `r format(nrow(dogs_clean), big.mark = ",", scientific = FALSE)` records after data filtering.
+
+The key variables, organized in columns, are animal type, date of birth (DOB), intake date, outcome date, and outcome type. Additional descriptors include the animals' primary breed, sex/sterilization status, primary/secondary colors, intake/outcome condition, intake type/subtype, and intake reason.
+
+The proposed predictor variable, dog's age in years at intake is calculated from intake date and DOB variables. The model's dependent variable, length of stay, is the difference in days between the outcome date and intake date. 
+The median age is `r round(summary_stats$median_age_years,2)` years and the median length of stay is `r round(summary_stats$median_los_days,2)` days.
+
+@fig-dogs-scatter shows quite a bit of variability, with no clear pattern, between the dogs' age at intake and their length of stay at the shelter.
+
+Many dogs lacked data for date of birth and were excluded from the study. It is also unclear in the raw data if there are records for animals returned to the shelter after adoption, creating a "new" record. The 2024 city audit [@Audit] also flagged opportunities for ACS to improve their data management and reporting, confirming the need for careful consideration when interpreting results.
+
+The standard linear regression assumptions (independent errors, constant variance, normality of residuals, and linear relationship) are evaluated in @sec-results.
+
+```{r fig-dogs-scatter}
+#| echo: false
+#| message: false
+dogs_clean %>%
+    ggplot(aes(x = age_years, y = los_days)) +
+    geom_point(alpha = 0.3, size = .5) +
+    geom_smooth(method = "lm", 
+                formula = y ~ x, 
+                se = FALSE) +
+    stat_regline_equation(label.x = 15, label.y = 50) + 
+    scale_x_continuous("Dog age at intake (years)", breaks = pretty_breaks()) +
+    scale_y_continuous("Length of stay (days)", breaks = pretty_breaks()) +
+    labs(
+      title = "Length of Stay vs. Age (of Adopted Dogs)",
+      subtitle = "July 2018 to September 2025")+
+    theme(plot.title = element_text(size=15))+
+    theme_light()+
+    theme(plot.margin = unit(c(.5,.5,.5,.5),"cm"))
+```
+
+
+# Methods {#sec-methods}
+
+We use a simple linear regression model, comparing length of stay (LOS) to age at intake.
+$$Y_i = \beta_0 +\beta_1 X_i + \varepsilon_i$$
+
+The predictor variable, age of dogs at intake, is denoted by $X_i$ and the response variable, length of stay, is denoted by $Y_i$.
+
+The slope, $\beta_1$, represents the estimated change in length of stay per additional year of age.
+The intercept, $\beta_0$, represents the estimated length of stay for a zero-year-old dog. 
+The residuals, $\varepsilon_i$, are assumed to be approximately normally distributed.
+
+Using a simple linear regression model for this analysis may be overly rudimentary, ignoring other variables that can influence length of stay, but provides a baseline investigation.
+
+We use the base R's `lm()` function to implement the linear model [@R_language] alongside functions from the dplyr [@dplyr] and tidyverse [@tidyverse] packages for data cleaning and visualization. 
+
+Model fit was evaluated using diagnostic plots discussed in @sec-results.
+
+# Results {#sec-results}
+
+The estimated slope parameter is $b_1=$ `r round(m1$coefficient[2],3)`, which can be interpreted to mean that a one-year increase in dog's age, on average, corresponds to ~`r round(m1$coefficient[2],3)` additional days in LOS. The estimated intercept is $b_0=$ `r round(m1$coefficient[1],3)`, the expected LOS for a 0-year-old dog.
+
+
+Residual plots @fig-diagnostics show important assumption violations. Mean residuals appear positive at younger ages and trend negative at older ages, suggesting under‑prediction for young dogs and over‑prediction for older dogs. The variance of residuals is much larger among younger dogs, violating constant variance (heteroskedasticity). Residuals plotted against intake date show a marked structural change beginning around 2022, consistent with time‑varying shelter conditions and, possibly, data management shifts not captured by the model. 
+
+Finally, the QQ plot @fig-qq shows pronounced right‑skew and heavy tails, indicating residual non‑normality.
+
+
+```{r fig-diagnostics}
+#| echo: false
+#| message: false
+
+
+linearity = dogs_clean %>%
+  ggplot(data = ., aes(x = age_years, y = resid))+
+    geom_point(alpha = .3, size = .5)+
+    geom_hline(yintercept = 0, linewidth = .4) + 
+    xlab("Dog age at intake (years)") +
+    ylab("Residual Value") + 
+    ggtitle("Residual vs. Predictor Variable")+
+    theme_light()+
+    theme(plot.margin = unit(c(0.5,0,0,0.5),"cm"))+
+    theme(plot.title = element_text(size=10))
+
+time = dogs_clean %>%
+  ggplot(data = ., aes(x = intake_date, y = resid))+
+    geom_point(alpha = .3, size = .5)+
+    geom_hline(yintercept = 0, linewidth = .4) + 
+    xlab("Intake Date (year)") +
+    ylab("Residual Value") + 
+    ggtitle("Residual vs. Intake Date")+
+    theme_light()+
+    theme(plot.margin = unit(c(0.5,0.5,0,0.5),"cm"))+
+    theme(plot.title = element_text(size=10))
+
+linearity + time
+```
+
+
+```{r fig-qq}
+#| echo: false
+#| message: false
+
+qq = dogs_clean %>%
+    ggplot(dogs_clean, mapping = aes(sample = stand_resid))+
+      geom_qq_line()+
+      geom_qq()+
+      xlab("Theoretical quantile (Normal distribution)") +
+      ylab("Sample quantile") + 
+      ggtitle("Quantile-quantile plot of residuals")+
+      theme_light() +
+      theme(plot.margin = unit(c(1,1,.5,.5),"cm"))
+qq
+```
+
+
+# Discussion {#sec-discussion}
+
+Age at intake has, at best, a weak positive association with LOS among adopted dogs at ACS. Visualizations in @sec-results reinforce that LOS varies widely at all ages and that a straight‑line relationship is an oversimplification.
+
+Consistent with previous research in this area, age at intake is a weak and unreliable predictor of LOS among adopted dogs at ACS. For operations and welfare decisions, relying solely on age as the predictor of length of stay would likely misdirect resources. A multi-factor profile should be explored to better understand the true relationship.
+
+Several data limitations were identified and pose accuracy concerns of the model. Many dogs lack a recorded or reliable DOB and as such, these cases were removed, potentially introducing a selection bias. It is unclear whether each record reflects a unique dog or whether returns/re‑adoptions appear as separate rows. More generally, the 2024 audit flagged opportunities to improve ACS data management and reporting. 
+
+As a modeling extension, additional variables should be considered to develop a better fitting model. Suggestions for these include the available descriptive variables: intake type/condition, sex/sterilization, breed/size, color/appearance, behavior notes, outcome subtype, and calendar time (e.g., year, month, pandemic/post‑pandemic indicators). 
+And, shifting the model's goal to look at the probability of exceeding operational thresholds (e.g., LOS > 30 days) would better support capacity planning at ACS.
+
+
+# References

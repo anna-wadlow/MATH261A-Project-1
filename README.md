@@ -50,3 +50,4 @@
 -   The **Animal Shelter Intake and Outcomes** data is published by the City of San Jose's Animal Care and Services within the Public Works department on San Jose's Open Data Portal (data.sanjoseca.gov).
 
 -   The data is provided to the public under an **open license** which allows citizens to reuse and redistribute the datasets without restriction. (sanjoseca.gov/your-government/departments-offices/information-technology/open-data)
+=======

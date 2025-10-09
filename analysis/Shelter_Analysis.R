@@ -7,6 +7,8 @@ library(ggthemes)
 library(ggpubr)
 library(patchwork)
 library(here)
+library(tidyr)
+library(broom)
 
 # ---- load & combine all years ----
 
@@ -80,13 +82,14 @@ summary_stats = dogs_clean %>%
     median_age_years = median(age_years, na.rm = TRUE),
     mean_age_years = mean(age_years, na.rm = TRUE),
     median_los_days  = median(los_days, na.rm = TRUE),
-    p95_los_days     = quantile(los_days, 0.95, na.rm = TRUE)
+    p95_los_days     = quantile(los_days, 0.95, na.rm = TRUE),
   )
 print(summary_stats)
 
 # ---- simple linear regression: LOS ~ Age ----
 m1 = lm(los_days ~ age_years, data = dogs_clean)
 print(summary(m1))
+m1_summary <- summary(m1)
 
 # ---- visualization ----
 dogs_clean %>%
@@ -145,6 +148,9 @@ dogs_clean %>%
   ggtitle("Quantile-quantile plot of residuals")+
   theme_light() +
   theme(plot.margin = unit(c(1,1,.5,.5),"cm"))
+
+
+
 
 
 
